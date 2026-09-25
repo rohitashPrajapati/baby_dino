@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Baby Dino Catch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --jungle:#0F3D2E; --cream:#FBEFD9; --coral:#FF7A50; --sky:#A9DFCF; --sun:#F4C95D;
+    --bg:#06110D; --panel:rgba(15,61,46,0.72); --text:#FBEFD9; --muted:#BFE3D4;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --bg:#06110D; } }
+  :root[data-theme="dark"]{ --bg:#06110D; }
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  *{box-sizing:border-box;}
+  body{margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--text);
+    font-family:'Nunito',system-ui,sans-serif; -webkit-user-select:none; user-select:none;}
+  #stage{position:fixed; inset:0; height:100%; overflow:hidden;}
+  video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#04120C;}
+  #fallback{position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px; text-align:center; padding:32px;
+    background:radial-gradient(circle at 50% 30%, #14523d, #06110D 75%);}
+  #fallback p{max-width:280px; color:var(--muted); font-size:15px; line-height:1.5; margin:0;}
+  #retryBtn{font-family:'Baloo 2'; font-weight:600; background:var(--coral); color:#2B0F04;
+    border:none; padding:12px 22px; border-radius:999px; font-size:16px; cursor:pointer;}
+
+  header{position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px); left:14px; right:14px;
+    display:flex; justify-content:space-between; align-items:center; z-index:5; pointer-events:none;}
+  #title{font-family:'Baloo 2'; font-weight:800; font-size:19px; letter-spacing:0.2px;
+    background:var(--panel); backdrop-filter:blur(6px); padding:8px 14px; border-radius:999px;}
+  #count{font-family:'Baloo 2'; font-weight:800; font-size:15px; background:var(--panel);
+    backdrop-filter:blur(6px); padding:8px 14px; border-radius:999px; color:var(--sun);}
+
+  #dinoWrap{position:absolute; width:160px; height:160px; left:50%; top:46%;
+    transform:translate(-80px,-80px); touch-action:none; z-index:4;}
+  #dinoBounce{width:100%; height:100%; animation:bob 2.1s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg);} 50%{transform:translateY(-11px) rotate(2deg);}}
+  #hint{position:absolute; left:50%; top:calc(46% + 92px); transform:translateX(-80px);
+    font-size:13px; color:var(--muted); background:var(--panel); padding:5px 10px; border-radius:999px;
+    white-space:nowrap; pointer-events:none; z-index:4;}
+
+  footer{position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+    display:flex; justify-content:center; z-index:5;}
+  #shutter{width:76px; height:76px; border-radius:50%; background:var(--cream); border:5px solid var(--coral);
+    box-shadow:0 4px 18px rgba(0,0,0,0.4); cursor:pointer;}
+  #shutter:active{transform:scale(0.94);}
+
+  #result{position:fixed; inset:0; background:#050D0A; display:none; flex-direction:column;
+    align-items:center; justify-content:center; z-index:10; padding:22px; gap:16px;}
+  #result img{max-width:92vw; max-height:64vh; border-radius:18px; box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+  #resultMsg{font-family:'Baloo 2'; font-weight:800; font-size:20px; color:var(--sun); text-align:center;}
+  .row{display:flex; gap:12px;}
+  .pill{font-family:'Baloo 2'; font-weight:600; font-size:15px; border:none; border-radius:999px;
+    padding:12px 20px; cursor:pointer;}
+  .pill.primary{background:var(--coral); color:#2B0F04;}
+  .pill.secondary{background:var(--panel); color:var(--cream);}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <video id="video" autoplay playsinline muted></video>
+  <div id="dinoWrap">
+    <div id="dinoBounce">
+      <svg viewBox="0 0 200 200" width="100%" height="100%">
+        <ellipse cx="100" cy="150" rx="46" ry="14" fill="#000" opacity="0.18"/>
+        <path d="M55 150 L60 120 L50 118 L58 100" stroke="#3E9B6F" stroke-width="14" stroke-linecap="round" fill="none"/>
+        <path d="M130 150 L128 120 L140 118 L132 102" stroke="#3E9B6F" stroke-width="14" stroke-linecap="round" fill="none"/>
+        <path d="M40 120 Q10 100 25 70 Q35 85 55 90 Z" fill="#5DBE8B"/>
+        <ellipse cx="95" cy="105" rx="55" ry="42" fill="#5DBE8B"/>
+        <circle cx="60" cy="60" r="34" fill="#5DBE8B"/>
+        <circle cx="47" cy="52" r="7" fill="#0F3D2E"/>
+        <circle cx="45" cy="50" r="2.4" fill="#fff"/>
+        <path d="M38 34 L44 22 L50 34 M56 32 L61 20 L66 32" stroke="#3E9B6F" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <path d="M62 90 Q76 84 88 90 Q80 96 68 96 Z" fill="#3E9B6F"/>
+        <path d="M60 60 Q40 62 35 66" stroke="#E67A3E" stroke-width="5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+  </div>
+  <div id="hint">Drag me • tap the button to snap!</div>
+  <div id="fallback">
+    <p id="fallbackMsg">We need camera access so your dino can hang out in the real world. Allow the camera prompt, or check your browser's site settings.</p>
+    <button id="retryBtn">Try again</button>
+  </div>
+</div>
+
+<header>
+  <div id="title">🦕 Baby Dino Catch</div>
+  <div id="count">Caught: 0</div>
+</header>
+
+<footer><button id="shutter" aria-label="Take photo"></button></footer>
+
+<div id="result">
+  <div id="resultMsg">Gotcha! 🎉</div>
+  <img id="resultImg" alt="Your baby dino photo">
+  <div class="row">
+    <button class="pill secondary" id="retakeBtn">Retake</button>
+    <button class="pill primary" id="shareBtn">Share</button>
+  </div>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const video=document.getElementById('video'), dinoWrap=document.getElementById('dinoWrap'),
+  fallback=document.getElementById('fallback'), fallbackMsg=document.getElementById('fallbackMsg'),
+  hint=document.getElementById('hint'), result=document.getElementById('result'),
+  resultImg=document.getElementById('resultImg'), canvas=document.getElementById('canvas'),
+  countEl=document.getElementById('count');
+let caught=0;
+
+async function startCamera(){
+  fallback.style.display='none';
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    video.srcObject=stream;
+  }catch(err){
+    fallbackMsg.textContent = err.name==='NotAllowedError'
+      ? "Camera access was blocked. Allow it in your browser's site settings, then try again."
+      : "Couldn't reach a camera on this device. You can still snap your dino against this backdrop.";
+    fallback.style.display='flex';
+  }
+}
+startCamera();
+document.getElementById('retryBtn').addEventListener('click', startCamera);
+
+// --- drag to place the dino ---
+let dragging=false, offX=0, offY=0;
+function pt(e){ return e.touches ? e.touches[0] : e; }
+dinoWrap.addEventListener('pointerdown', e=>{
+  dragging=true; const r=dinoWrap.getBoundingClientRect();
+  offX=e.clientX-r.left; offY=e.clientY-r.top; dinoWrap.setPointerCapture(e.pointerId);
+  hint.style.display='none';
+});
+dinoWrap.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  dinoWrap.style.left=(e.clientX-offX+80)+'px';
+  dinoWrap.style.top=(e.clientY-offY+80)+'px';
+  dinoWrap.style.transform='translate(-80px,-80px)';
+});
+dinoWrap.addEventListener('pointerup', ()=> dragging=false);
+
+// --- capture ---
+function svgToImage(svgEl){
+  return new Promise(resolve=>{
+    const xml=new XMLSerializer().serializeToString(svgEl);
+    const url='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
+    const img=new Image(); img.onload=()=>resolve(img); img.src=url;
+  });
+}
+function drawVideoCover(ctx,vid,w,h){
+  const vw=vid.videoWidth||w, vh=vid.videoHeight||h;
+  const cr=w/h, vr=vw/vh; let sx,sy,sw,sh;
+  if(vr>cr){ sh=vh; sw=vh*cr; sx=(vw-sw)/2; sy=0; } else { sw=vw; sh=vw/cr; sx=0; sy=(vh-sh)/2; }
+  ctx.drawImage(vid,sx,sy,sw,sh,0,0,w,h);
+}
+document.getElementById('shutter').addEventListener('click', async ()=>{
+  const w=window.innerWidth, h=window.innerHeight;
+  canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  if(video.videoWidth) drawVideoCover(ctx,video,w,h);
+  else { ctx.fillStyle='#14523d'; ctx.fillRect(0,0,w,h); }
+  const svgEl=dinoWrap.querySelector('svg');
+  const r=dinoWrap.getBoundingClientRect();
+  try{
+    const img=await svgToImage(svgEl);
+    ctx.drawImage(img, r.left, r.top-10, r.width, r.height);
+  }catch(e){}
+  resultImg.src=canvas.toDataURL('image/png');
+  caught++; countEl.textContent='Caught: '+caught;
+  result.style.display='flex';
+});
+document.getElementById('retakeBtn').addEventListener('click', ()=> result.style.display='none');
+document.getElementById('shareBtn').addEventListener('click', async ()=>{
+  canvas.toBlob(async blob=>{
+    const file=new File([blob],'baby-dino.png',{type:'image/png'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:'I caught a baby dino!'}); return; }catch(e){}
+    }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='baby-dino.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }, 'image/png');
+});
+</script>
+</body>
+</html>
